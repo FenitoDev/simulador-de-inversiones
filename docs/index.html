@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulador de Pensión</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script type="module" src="js/main.js" defer></script>
+</head>
+<body>
+  <!-- Mobile menu toggle -->
+  <button id="menu-toggle" class="menu-toggle" aria-label="Toggle menu">☰</button>
+
+  <div id="sidebar">
+    <br><br>
+    <h2>Parámetros</h2>
+    <!-- controls... -->
+    <div class="control">
+      <label for="initialAgeRange">Edad inicial</label>
+      <input type="range" id="initialAgeRange" min="0" max="100" value="25" step="1" />
+      <input type="number" id="initialAgeNumber" min="0" max="100" value="25" step="1" />
+    </div>
+    <!-- rest of controls unchanged -->
+    <div class="control">
+      <label for="maxAgeRange">Edad final</label>
+      <input type="range" id="maxAgeRange" min="25" max="120" value="100" step="1" />
+      <input type="number" id="maxAgeNumber" min="25" max="120" value="100" step="1" />
+    </div>
+    <div class="control">
+      <label for="retirementAgeRange">Edad de jubilación</label>
+      <input type="range" id="retirementAgeRange" min="25" max="100" value="55" step="1" />
+      <input type="number" id="retirementAgeNumber" min="25" max="100" value="65" step="1" />
+    </div>
+    <div class="control">
+      <label for="annualRateRange">Retorno de inversión anual (%)</label>
+      <input type="range" id="annualRateRange" min="0" max="20" value="7" step="0.1" />
+      <input type="text" id="annualRateNumber" value="7" />
+    </div>
+    <div class="control">
+      <label for="initialBalance">Inversión inicial</label>
+      <input type="text" id="initialBalance" value="0" />
+    </div>
+    <div class="control">
+      <label for="monthlyDeposit">Inversión mensual</label>
+      <input type="text" id="monthlyDeposit" value="39.000" />
+    </div>
+    <div class="control">
+      <label for="pension">Pensión</label>
+      <input type="text" id="pension" value="600.000" />
+    </div>
+    <div class="control checkbox-control">
+      <label><input type="checkbox" id="logScale" /> Escala logarítmica (Eje y)</label>
+    </div>
+  </div>
+  <div id="chart"></div>
+</body>
+</html>
