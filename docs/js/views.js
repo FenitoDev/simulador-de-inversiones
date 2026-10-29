@@ -27,6 +27,16 @@ export function buildView(sim, state) {
       start: r.start, end: r.end, depletedAt: r.depletedAt, transferTo: r.transferTo, warnings: r.warnings
     };
     keys.forEach(key => { s[key] = scale(r[key]); });
+    // In today's money, each peso is deflated at its own date, so nominal interest
+    // no longer adds up. Interest becomes what is left after the flows: the real
+    // gain, net of inflation (negative when the rate is below inflation).
+    if (profile.realValues) {
+      s.interest = s.balance.map((v, k) => {
+        if (v === null) return 0;
+        const previous = k > 0 ? (s.balance[k - 1] ?? 0) : 0;
+        return v - previous - s.initial[k] - s.transferIn[k] - s.deposit[k] - s.bonus[k] + s.withdrawal[k];
+      });
+    }
     return s;
   });
 
@@ -127,8 +137,10 @@ function kpis(view, s, cutoff, state) {
     sub: received > 0 ? `Incluye ${formatMoney(received)} recibidos por traspaso` : 'Saldo inicial más aportes'
   });
   tiles.push({
-    label: 'Intereses ganados',
-    tip: 'Ganancia acumulada por la rentabilidad hasta la fecha. El porcentaje compara esa ganancia con el capital aportado.',
+    label: state.profile.realValues ? 'Ganancia real' : 'Intereses ganados',
+    tip: state.profile.realValues
+      ? 'Intereses menos lo que la inflación le quita al saldo, en pesos de hoy. Es negativa si la rentabilidad es menor que la inflación. El porcentaje la compara con el capital aportado.'
+      : 'Ganancia acumulada por la rentabilidad hasta la fecha. El porcentaje compara esa ganancia con el capital aportado.',
     value: formatMoney(interest),
     sub: contributed + received > 0 ? `${formatRate(Math.round((interest / (contributed + received)) * 1000) / 10)}% sobre lo aportado` : ''
   });
