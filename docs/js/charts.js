@@ -117,13 +117,13 @@ export function renderBalanceChart(el, ctx) {
       const color = t.series[s.color];
       traces.push({
         x: xs, y: s.balance, name: s.name, type: 'scatter', mode: 'lines',
-        stackgroup: 'balance', line: { color, width: 1.5 }, fillcolor: alpha(color, 0.4),
+        line: { color, width: 2 },
         hovertemplate: '%{fullData.name}: %{y:$,.0f}<extra></extra>'
       });
     });
     traces.push({
       x: xs, y: ctx.series.balance, name: 'Total', type: 'scatter', mode: 'lines',
-      line: { color: t.text, width: 2 }, customdata: labels,
+      line: { color: t.text, width: 2, dash: 'dot' }, customdata: labels,
       hovertemplate: '<b>%{fullData.name}: %{y:$,.0f}</b>  ·  %{customdata}<extra></extra>'
     });
   } else {

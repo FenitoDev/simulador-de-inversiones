@@ -347,7 +347,7 @@ export function createViews(root, app) {
 
     el('kpis').innerHTML = kpis(view, s, cutoff, state);
     el('balance-title').innerHTML = isSummary
-      ? `Saldo total por inversión ${tipHTML('Cada color es una inversión. Las áreas se apilan, así que su borde superior es el total.')}`
+      ? `Saldo por inversión ${tipHTML('Cada línea de color es el saldo de una inversión por separado. La línea punteada «Total» es la suma de las inversiones incluidas.')}`
       : `Saldo de «${esc(s.name)}» ${tipHTML('«Capital neto aportado» es lo que has puesto menos lo que has sacado. La distancia entre esa línea y el saldo es lo que han aportado los intereses.')}`;
     el('breakdown-card').hidden = !isSummary;
     if (isSummary) el('breakdown').innerHTML = breakdownHTML(view, cutoff, state);
