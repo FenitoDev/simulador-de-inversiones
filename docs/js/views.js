@@ -18,7 +18,7 @@ export function buildView(sim, state) {
   const n = sim.months.length;
   const factor = sim.months.map(t => profile.realValues ? Math.pow(1 + profile.inflation / 100, -(t - today) / 12) : 1);
   const scale = arr => arr.map((v, k) => (v === null ? null : v * factor[k]));
-  const keys = ['balance', 'initial', 'deposit', 'withdrawal', 'interest', 'transferIn', 'transferOut', 'payout', 'shortfall'];
+  const keys = ['balance', 'initial', 'deposit', 'withdrawal', 'interest', 'transferIn', 'transferOut', 'payout', 'shortfall', 'bonus'];
 
   const series = sim.results.map((r, i) => {
     const inv = state.investments[i];
@@ -39,7 +39,7 @@ export function buildView(sim, state) {
   included.forEach(s => {
     for (let k = 0; k < n; k++) {
       if (s.balance[k] !== null) aggregate.balance[k] = (aggregate.balance[k] ?? 0) + s.balance[k];
-      ['initial', 'deposit', 'withdrawal', 'interest', 'payout', 'shortfall'].forEach(key => { aggregate[key][k] += s[key][k]; });
+      ['initial', 'deposit', 'withdrawal', 'interest', 'payout', 'shortfall', 'bonus'].forEach(key => { aggregate[key][k] += s[key][k]; });
       if (s.transferTo && !includedIds.has(s.transferTo)) aggregate.payout[k] += s.transferOut[k];
     }
   });
@@ -61,7 +61,7 @@ function ageAt(sim, t) {
 // Money in and out of a series, as seen from that series. In the aggregate,
 // transfers are internal and do not appear.
 function moneyIn(s, k) {
-  return s.initial[k] + s.deposit[k] + (s.transferIn ? s.transferIn[k] : 0);
+  return s.initial[k] + s.deposit[k] + s.bonus[k] + (s.transferIn ? s.transferIn[k] : 0);
 }
 
 function moneyOut(s, k) {
@@ -89,6 +89,7 @@ function kpis(view, s, cutoff, state) {
   const withdrawn = has ? sum(s.withdrawal, kc) : 0;
   const cashedOut = has ? sum(s.payout, kc) + (isSummary ? 0 : sum(s.transferOut, kc)) : 0;
   const interest = has ? sum(s.interest, kc) : 0;
+  const bonus = has ? sum(s.bonus, kc) : 0;
 
   const monthlyIn = inRange ? s.deposit[kc] : 0;
   const monthlyOut = inRange ? s.withdrawal[kc] : 0;
@@ -131,6 +132,14 @@ function kpis(view, s, cutoff, state) {
     value: formatMoney(interest),
     sub: contributed + received > 0 ? `${formatRate(Math.round((interest / (contributed + received)) * 1000) / 10)}% sobre lo aportado` : ''
   });
+  if (sum(s.bonus) > 0) {
+    tiles.push({
+      label: 'Bonificación estatal',
+      tip: 'Bonificación fiscal del APV recibida hasta la fecha: un porcentaje de los aportes de cada año, con tope anual, abonado en enero del año siguiente. No se cuenta como capital aportado.',
+      value: formatMoney(bonus),
+      sub: `${formatMoney(sum(s.bonus))} en toda la simulación`
+    });
+  }
   tiles.push({
     label: 'Total retirado',
     tip: 'Retiros mensuales pagados hasta la fecha, más los saldos retirados o traspasados al cerrar una inversión.',
@@ -189,7 +198,7 @@ function breakdownHTML(view, cutoff, state) {
         <td>${formatRate(s.rate)}%</td>
         <td>${formatMoney(balance)}</td>
         <td>${share}</td>
-        <td>${formatMoney(at(s.initial) + at(s.deposit) + at(s.transferIn))}</td>
+        <td>${formatMoney(at(s.initial) + at(s.deposit) + at(s.bonus) + at(s.transferIn))}</td>
         <td>${formatMoney(at(s.withdrawal) + at(s.payout) + at(s.transferOut))}</td>
         <td>${formatMoney(at(s.interest))}</td>
         <td>${esc(statusOf(view, s, cutoff, state))}</td>
@@ -204,13 +213,13 @@ function breakdownHTML(view, cutoff, state) {
         <tfoot><tr>
           <th scope="row">Total</th><td></td>
           <td>${formatMoney(total)}</td><td>${total > 0 ? '100%' : '—'}</td>
-          <td>${formatMoney(at(aggregate.initial) + at(aggregate.deposit))}</td>
+          <td>${formatMoney(at(aggregate.initial) + at(aggregate.deposit) + at(aggregate.bonus))}</td>
           <td>${formatMoney(at(aggregate.withdrawal) + at(aggregate.payout))}</td>
           <td>${formatMoney(at(aggregate.interest))}</td><td></td>
         </tr></tfoot>
       </table>
     </div>
-    <p class="note">Entradas: saldo inicial, aportes y traspasos recibidos. Salidas: retiros, liquidaciones y traspasos al término. En el total, los traspasos entre inversiones se compensan.</p>`;
+    <p class="note">Entradas: saldo inicial, aportes, bonificación estatal y traspasos recibidos. Salidas: retiros, liquidaciones y traspasos al término. En el total, los traspasos entre inversiones se compensan.</p>`;
 }
 
 // One row per calendar year, used by the yearly table, the CSV and the flows chart

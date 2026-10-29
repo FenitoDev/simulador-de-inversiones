@@ -131,7 +131,7 @@ export function renderBalanceChart(el, ctx) {
     const color = t.series[s.color];
     let net = 0;
     const netCapital = s.balance.map((v, k) => {
-      net += s.initial[k] + s.deposit[k] + s.transferIn[k] - s.withdrawal[k] - s.payout[k] - s.transferOut[k];
+      net += s.initial[k] + s.deposit[k] + s.bonus[k] + s.transferIn[k] - s.withdrawal[k] - s.payout[k] - s.transferOut[k];
       return v === null ? null : net;
     });
     traces.push({
@@ -172,7 +172,7 @@ export function renderFlowsChart(el, ctx) {
       marker: {
         color: pattern ? alpha(color, 0.25) : color,
         line: { width: 0 },
-        pattern: pattern ? { shape: '/', fgcolor: color, size: 6, solidity: 0.35 } : undefined
+        pattern: pattern ? { shape: pattern === true ? '/' : pattern, fgcolor: color, size: 6, solidity: 0.35 } : undefined
       },
       legendgroup: s.id, showlegend,
       hovertemplate: '%{fullData.name}: %{y:$,.0f}<extra></extra>'
@@ -183,6 +183,7 @@ export function renderFlowsChart(el, ctx) {
     all.filter(s => s.included).forEach(s => {
       const color = t.series[s.color];
       bar(s, s.name, true, color, (x, k) => x.initial[k] + x.deposit[k], 1, false);
+      bar(s, `${s.name} · bonificación`, false, color, (x, k) => x.bonus[k], 1, '.');
       bar(s, `${s.name} · retiros`, false, color, (x, k) => x.withdrawal[k], -1, false);
       bar(s, `${s.name} · salida al término`, false, color, (x, k) => x.payout[k], -1, true);
     });
@@ -190,6 +191,7 @@ export function renderFlowsChart(el, ctx) {
     const s = ctx.series;
     const color = t.series[s.color];
     bar(s, 'Aportes', true, color, (x, k) => x.initial[k] + x.deposit[k], 1, false);
+    bar(s, 'Bonificación estatal', true, color, (x, k) => x.bonus[k], 1, '.');
     bar(s, 'Traspasos recibidos', true, color, (x, k) => x.transferIn[k], 1, true);
     bar(s, 'Retiros', true, color, (x, k) => x.withdrawal[k], -1, false);
     bar(s, 'Salida al término', true, color, (x, k) => x.payout[k] + x.transferOut[k], -1, true);

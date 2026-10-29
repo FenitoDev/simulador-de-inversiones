@@ -29,6 +29,7 @@ export function createEditor(root, app) {
     const flowEl = el.closest('[data-flow]');
     const invEl = el.closest('[data-inv]');
     const inv = invEl && app.state.investments.find(i => i.id === invEl.dataset.inv);
+    if (inv && el.closest('[data-bonus]')) return { inv, target: inv.bonus };
     if (flowEl && inv) return { inv, target: inv.flows.find(f => f.id === flowEl.dataset.flow) };
     if (inv) return { inv, target: inv };
     return { inv: null, target: app.state.profile };
@@ -83,6 +84,9 @@ export function createEditor(root, app) {
       target[bind] = readValue(el);
     }
     if (bind === 'type') el.closest('.flow').className = `flow ${target.type}`;
+    if (target === inv?.bonus && bind === 'enabled') {
+      el.closest('[data-bonus]').querySelector('.bonus-fields').hidden = !target.enabled;
+    }
     afterValueChange(inv);
   }
 
@@ -211,6 +215,8 @@ const TIPS = {
   included: 'Si la desmarcas, la inversión se sigue simulando y conserva su pestaña, pero no suma en el Resumen. Sirve para comparar escenarios.',
   flows: 'Aportes: dinero que ingresas cada mes. Retiros: dinero que sacas cada mes, por ejemplo tu pensión. Si el saldo no alcanza para un retiro, se paga solo lo disponible.',
   untilEnd: 'El flujo dura hasta que termine la inversión, o hasta el final de la simulación si no tiene término.',
+  bonus: 'Beneficio del Estado para el APV régimen A: cada año se abona un porcentaje de lo aportado ese año, con un tope anual. Se calcula sobre los aportes mensuales (no sobre el saldo inicial ni los traspasos) y se abona en enero del año siguiente. Se pierde si retiras antes de jubilar; el simulador no modela esa regla.',
+  bonusCap: 'Tope anual de la bonificación en pesos de hoy: 6 UTM. Cada año sube con la inflación del perfil, igual que la UTM. Revisa el valor vigente de la UTM en el SII.',
   growth: 'Cuánto sube el monto del flujo cada 12 meses desde su inicio. Ejemplo: $100.000 con 3% pasa a $103.000 el segundo año y a $106.090 el tercero. Si lo igualas a la inflación, el flujo mantiene su poder de compra.',
 };
 
@@ -226,7 +232,7 @@ function exportState(state) {
 
 function cardMeta(inv) {
   const flows = inv.flows.length;
-  return `${formatRate(inv.rate)}% anual · ${flows} ${flows === 1 ? 'flujo' : 'flujos'}${inv.included ? '' : ' · fuera del total'}`;
+  return `${formatRate(inv.rate)}% anual · ${flows} ${flows === 1 ? 'flujo' : 'flujos'}${inv.bonus.enabled ? ' · bonificación' : ''}${inv.included ? '' : ' · fuera del total'}`;
 }
 
 function profileHTML(profile) {
@@ -328,6 +334,19 @@ function investmentHTML(inv, state, open) {
           <div class="swatches">${swatches}</div>
         </div>
         <label class="check"><input type="checkbox" data-bind="included" data-type="bool"${inv.included ? ' checked' : ''} /> Incluir en la vista agregada ${tipHTML(TIPS.included)}</label>
+        <div class="bonus" data-bonus>
+          <label class="check"><input type="checkbox" data-bind="enabled" data-type="bool"${inv.bonus.enabled ? ' checked' : ''} /> Bonificación fiscal (APV régimen A) ${tipHTML(TIPS.bonus)}</label>
+          <div class="field-row bonus-fields"${inv.bonus.enabled ? '' : ' hidden'}>
+            <div class="field">
+              <label for="bonusRate-${id}">Porcentaje (%)</label>
+              <input type="text" inputmode="decimal" id="bonusRate-${id}" data-bind="rate" data-type="rate" value="${formatRate(inv.bonus.rate)}" />
+            </div>
+            <div class="field">
+              <label for="bonusCap-${id}">Tope anual ${tipHTML(TIPS.bonusCap)}</label>
+              <input type="text" inputmode="numeric" id="bonusCap-${id}" data-bind="cap" data-type="money" value="${formatNumber(inv.bonus.cap)}" />
+            </div>
+          </div>
+        </div>
 
         <h3>Flujos mensuales ${tipHTML(TIPS.flows)}</h3>
         ${inv.flows.map(f => flowHTML(f, horizon)).join('') || '<p class="empty">Sin aportes ni retiros.</p>'}

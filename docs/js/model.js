@@ -29,6 +29,12 @@ export function newFlow(type, from, to = null) {
   };
 }
 
+// APV state bonus: 15% of the year's deposits, capped at 6 UTM per year
+// (about $420.000 in 2026). The cap is in today's money.
+export function newBonus(enabled = false) {
+  return { enabled, rate: 15, cap: 420000 };
+}
+
 export function nextColor(investments) {
   const used = new Set(investments.map(inv => inv.color));
   for (let slot = 0; slot < COLOR_SLOTS; slot++) {
@@ -50,6 +56,7 @@ export function newInvestment(state) {
     end: null,
     onEnd: 'withdraw',
     included: true,
+    bonus: newBonus(),
     flows: [newFlow('deposit', today, retirement - 1)]
   };
 }
@@ -80,6 +87,7 @@ export function defaultState() {
     end: null,
     onEnd: 'withdraw',
     included: true,
+    bonus: newBonus(),
     flows: [
       { id: newId(), type: 'deposit', amount: 39000, from: formatMonth(today), to: formatMonth(retirement - 1), growth: 0 },
       { id: newId(), type: 'withdrawal', amount: 600000, from: formatMonth(retirement), to: null, growth: 0 }
@@ -95,6 +103,7 @@ export function defaultState() {
     end: null,
     onEnd: 'withdraw',
     included: true,
+    bonus: newBonus(true),
     flows: [
       { id: newId(), type: 'deposit', amount: 50000, from: formatMonth(today + 2), to: formatMonth(retirement - 1), growth: 3 },
       { id: newId(), type: 'withdrawal', amount: 750000, from: formatMonth(retirement), to: null, growth: 0 }
@@ -110,6 +119,7 @@ export function defaultState() {
     end: formatMonth(today + 3 * 12),
     onEnd: apv.id,
     included: true,
+    bonus: newBonus(),
     flows: []
   };
   return {
@@ -129,6 +139,16 @@ function month(value, fallback) {
 function num(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeBonus(raw) {
+  const base = newBonus();
+  if (!raw || typeof raw !== 'object') return base;
+  return {
+    enabled: Boolean(raw.enabled),
+    rate: Math.max(0, num(raw.rate, base.rate)),
+    cap: Math.abs(num(raw.cap, base.cap))
+  };
 }
 
 // Accepts anything (localStorage, imported file) and returns a complete,
@@ -162,6 +182,7 @@ export function normalizeState(raw) {
       end: inv.end ? month(inv.end, null) : null,
       onEnd: typeof inv.onEnd === 'string' ? inv.onEnd : 'withdraw',
       included: inv.included !== false,
+      bonus: normalizeBonus(inv.bonus),
       flows: (Array.isArray(inv.flows) ? inv.flows : []).filter(f => f && typeof f === 'object').map(f => ({
         id: typeof f.id === 'string' && f.id ? f.id : newId(),
         type: f.type === 'withdrawal' ? 'withdrawal' : 'deposit',

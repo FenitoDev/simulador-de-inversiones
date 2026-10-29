@@ -1,6 +1,6 @@
 // Monthly simulation of several investments on a shared timeline.
 // Pure module (no DOM access) so it can be run and tested from Node.
-import { parseMonth, monthLabel } from './utils.js';
+import { parseMonth, monthLabel, currentMonth } from './utils.js';
 
 export function monthlyRate(annualRate) {
   return Math.pow(1 + annualRate / 100, 1 / 12) - 1;
@@ -13,13 +13,23 @@ export function flowAmount(flow, from, month) {
   return flow.amount * Math.pow(1 + (flow.growth || 0) / 100, yearsElapsed);
 }
 
-const SERIES = ['initial', 'deposit', 'withdrawal', 'interest', 'transferIn', 'transferOut', 'payout', 'shortfall'];
+const SERIES = ['initial', 'deposit', 'withdrawal', 'interest', 'transferIn', 'transferOut', 'payout', 'shortfall', 'bonus'];
+
+// State bonus on a calendar year's deposits (Chile's APV "bonificación fiscal",
+// régimen A): a percentage of what was deposited, up to an annual cap expressed
+// in today's money and adjusted every year by the profile's inflation.
+export function bonusAmount(bonus, deposits, year, todayYear, inflation) {
+  const cap = bonus.cap * Math.pow(1 + inflation / 100, year - todayYear);
+  return Math.min(deposits * bonus.rate / 100, cap);
+}
 
 // Each month, for every active investment and in this order:
 //   1. the initial balance (first month) and transfers from matured investments come in,
 //   2. deposits are added and withdrawals are paid (never below a zero balance),
-//   3. the balance earns one month of interest,
-//   4. if it is the investment's last month, the balance is cashed out or
+//   3. the state bonus for last year's deposits, if any, is credited in January
+//      (or in the investment's last month, so it is not lost),
+//   4. the balance earns one month of interest,
+//   5. if it is the investment's last month, the balance is cashed out or
 //      transferred to another investment, arriving there the following month.
 export function simulate(state) {
   const { profile, investments } = state;
@@ -75,6 +85,9 @@ export function simulate(state) {
   });
 
   const balances = new Array(plans.length).fill(0);
+  const todayYear = Math.floor(currentMonth() / 12);
+  // Deposits of the current calendar year, the base of the state bonus
+  const yearDeposits = new Array(plans.length).fill(0);
   const pendingIn = plans.map(() => new Array(n + 1).fill(0));
 
   for (let k = 0; k < n; k++) {
@@ -107,6 +120,20 @@ export function simulate(state) {
           if (r.depletedAt === null) r.depletedAt = t;
         }
       });
+
+      const bonus = p.inv.bonus;
+      if (bonus && bonus.enabled) {
+        const year = Math.floor(t / 12);
+        if (t % 12 === 0 && t !== p.start && yearDeposits[i] > 0) {
+          r.bonus[k] = bonusAmount(bonus, yearDeposits[i], year - 1, todayYear, profile.inflation);
+          yearDeposits[i] = 0;
+        }
+        yearDeposits[i] += r.deposit[k];
+        if (t === p.end && yearDeposits[i] > 0) {
+          r.bonus[k] += bonusAmount(bonus, yearDeposits[i], year, todayYear, profile.inflation);
+        }
+        balance += r.bonus[k];
+      }
 
       const interest = balance * p.rate;
       balance += interest;
